@@ -21,7 +21,8 @@ jobs:
     runs-on: ${{ matrix.os }}
     steps:
     - uses: actions/checkout@v2
-      repository: tomatenquark/sauerbraten_code
+      with:
+        repository: tomatenquark/sauerbraten_code
     - name: Add msbuild to PATH
       uses: microsoft/setup-msbuild@v1.0.2
       if: matrix.use-msbuild
