@@ -1,0 +1,119 @@
+name: Continous deployment for sauerbraten
+on:
+  push:
+    tags:
+      - 'v*' # Push events to matching v*, i.e. v1.0, v20.15.10
+
+jobs:
+  build:
+    strategy:
+      matrix:
+        os: [macos-latest, windows-latest, ubuntu-latest]
+        include:
+          - os: macos-latest
+            use-make: true
+            package-osx: true
+            working-directory: ./src
+          - os: windows-latest
+            use-msbuild: true
+            working-directory: ./src/vcpp
+          - os: ubuntu-latest
+            install-headerfiles: true
+            use-make: true
+            package-linux: true
+            working-directory: ./src
+    
+    runs-on: ${{ matrix.os }}
+    steps:
+    - uses: actions/checkout@v2
+      with:
+        repository: tomatenquark/sauerbraten_code
+    - name: Setup MSBuild
+      uses: warrenbuckley/Setup-MSBuild@v1
+      if: matrix.use-msbuild
+    - name: Install C and C++ header files
+      run: sudo apt-get install -y libsdl-dev libsdl2-mixer-dev libsdl2-image-dev zlib1g-dev
+      if: matrix.install-headerfiles
+    - name: Build for Windows
+      working-directory: ${{ matrix.working-directory }}
+      run: msbuild /p:PlatformToolset=v142 sauerbraten.sln
+      if: matrix.use-msbuild
+    - name: Build for ${{ matrix.os }}
+      working-directory: ${{ matrix.working-directory }}
+      run: make
+      if: matrix.use-make
+    - name: Archive OSX App
+      run: zip -r sauerbraten_macos.zip ./sauerbraten.app
+      if: matrix.package-osx
+    - name: Archive Windows binaries
+      run: Compress-Archive -Path .\bin\sauerbraten_debug.exe -DestinationPath sauerbraten_windows.zip
+      if: matrix.use-msbuild
+    - name: Archive Ubuntu binaries
+      run: zip sauerbraten_ubuntu.zip ./src/sauer_client ./src/sauer_server
+      if: matrix.package-linux
+    - uses: actions/upload-artifact@v1
+      with: 
+        name: sauerbraten_macos
+        path: ./sauerbraten_macos.zip
+      if: matrix.package-osx
+    - uses: actions/upload-artifact@v1
+      with: 
+        name: sauerbraten_windows
+        path: ./sauerbraten_windows.zip
+      if: matrix.use-msbuild
+    - uses: actions/upload-artifact@v1
+      with: 
+        name: sauerbraten_ubuntu
+        path: ./sauerbraten_ubuntu.zip
+      if: matrix.package-linux
+  release:
+    runs-on: ubuntu-latest
+    needs: build
+    steps:
+      - name: Create Release
+        id: create_release
+        uses: actions/create-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: ${{ github.ref }}
+          release_name: Release ${{ github.ref }}
+          draft: false
+          prerelease: true
+      - uses: actions/download-artifact@v1
+        with:
+          name: sauerbraten_macos
+      - uses: actions/download-artifact@v1
+        with:
+          name: sauerbraten_windows
+      - uses: actions/download-artifact@v1
+        with:
+          name: sauerbraten_ubuntu
+      - run: find .
+      - name: Upload OSX App
+        uses: actions/upload-release-asset@v1.0.1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: ./sauerbraten_macos/sauerbraten_macos.zip
+          asset_name: sauerbraten_macos.zip
+          asset_content_type: application/zip
+      - name: Upload Windows binaries
+        uses: actions/upload-release-asset@v1.0.1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: ./sauerbraten_windows/sauerbraten_windows.zip
+          asset_name: sauerbraten_windows.zip
+          asset_content_type: application/zip
+      - name: Upload Ubuntu binaries
+        uses: actions/upload-release-asset@v1.0.1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: ./sauerbraten_ubuntu/sauerbraten_ubuntu.zip
+          asset_name: sauerbraten_ubuntu.zip
+          asset_content_type: application/zip
