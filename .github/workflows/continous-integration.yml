@@ -1,0 +1,38 @@
+name: Continous integration for sauerbraten
+on: [push]
+
+jobs:
+  build:
+    strategy:
+      matrix:
+        os: [macos-latest, windows-latest, ubuntu-latest]
+        include:
+          - os: macos-latest
+            use-make: true
+            working-directory: ./src
+          - os: windows-latest
+            use-msbuild: true
+            working-directory: ./src/vcpp
+          - os: ubuntu-latest
+            install-headerfiles: true
+            use-make: true
+            working-directory: ./src
+    
+    runs-on: ${{ matrix.os }}
+    steps:
+    - uses: actions/checkout@v2
+      repository: tomatenquark/sauerbraten_code
+    - name: Add msbuild to PATH
+      uses: microsoft/setup-msbuild@v1.0.2
+      if: matrix.use-msbuild
+    - name: Install C and C++ header files
+      run: sudo apt-get install -y libsdl-dev libsdl2-mixer-dev libsdl2-image-dev zlib1g-dev
+      if: matrix.install-headerfiles
+    - name: Build for Windows
+      working-directory: ${{ matrix.working-directory }}
+      run: msbuild /p:PlatformToolset=v142 sauerbraten.sln
+      if: matrix.use-msbuild
+    - name: Build for ${{ matrix.os }}
+      working-directory: ${{ matrix.working-directory }}
+      run: make
+      if: matrix.use-make
