@@ -1,0 +1,9 @@
+# globally ignore OSX stuff
+.DS_STORE
+
+# sauer bins
+bin/sauerbraten*
+bin/rpg*
+bin64/sauerbraten*
+bin_unix/linux*
+sauerbraten.app/Contents/Macos/sauerbraten_universal
