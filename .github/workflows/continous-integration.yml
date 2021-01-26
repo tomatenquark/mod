@@ -25,7 +25,7 @@ jobs:
       uses: microsoft/setup-msbuild@v1.0.2
       if: matrix.use-msbuild
     - name: Install C and C++ header files
-      run: sudo apt-get install -y libsdl-dev libsdl2-mixer-dev libsdl2-image-dev zlib1g-dev
+      run: sudo apt-get update && sudo apt-get install -y libsdl-dev libsdl2-mixer-dev libsdl2-image-dev zlib1g-dev
       if: matrix.install-headerfiles
     - name: Build for ${{ matrix.os }}
       working-directory: ${{ matrix.working-directory }}
